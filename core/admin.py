@@ -1,12 +1,36 @@
 from django.contrib import admin
-from .models import Servidor, Tipos_pgto, Dispositivo, Sistema, Qtd_tela, Cliente, Plano
+from .models import Servidor, Tipos_pgto, Dispositivo, Sistema, Qtd_tela, Cliente, Plano, Mensalidade
 
-# Register your models here.
+class ClienteAdmin(admin.ModelAdmin):
+    list_display = ('id',
+                    'nome',
+                    'telefone',
+                    'servidor',
+                    'data_pagamento',
+                    'forma_pgto',
+                    'plano',
+                    'telas',
+                    'data_adesao',
+                    'data_cancelamento',
+                    'ultimo_pagamento',
+                    'cancelado')
 
-admin.site.register(Servidor)
-admin.site.register(Tipos_pgto)
+class MensalidadeAdmin(admin.ModelAdmin):
+    list_display = ('cliente',
+                    'dt_vencimento',
+                    'dt_pagamento',
+                    'valor',
+                    'pgto',
+                    'cancelado')
+    
+class PlanoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'valor')
+
+admin.site.register(Mensalidade, MensalidadeAdmin)
+admin.site.register(Cliente, ClienteAdmin)
+admin.site.register(Plano, PlanoAdmin)
 admin.site.register(Dispositivo)
-admin.site.register(Sistema)
+admin.site.register(Tipos_pgto)
 admin.site.register(Qtd_tela)
-admin.site.register(Cliente)
-admin.site.register(Plano)
+admin.site.register(Servidor)
+admin.site.register(Sistema)
