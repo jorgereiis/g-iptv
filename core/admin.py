@@ -6,6 +6,8 @@ class ClienteAdmin(admin.ModelAdmin):
                     'nome',
                     'telefone',
                     'servidor',
+                    'dispositivo',
+                    'sistema',
                     'data_pagamento',
                     'forma_pgto',
                     'plano',
@@ -16,7 +18,8 @@ class ClienteAdmin(admin.ModelAdmin):
                     'cancelado')
 
 class MensalidadeAdmin(admin.ModelAdmin):
-    list_display = ('cliente',
+    list_display = ('id',
+                    'cliente',
                     'dt_vencimento',
                     'dt_pagamento',
                     'valor',

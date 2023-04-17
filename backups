@@ -1,3 +1,7 @@
+Considerando o código abaixo, me envie o código que podemos utilizar para implementar a lógica que discutimos acima sobre Plano de Indicação.
+
+#models.py
+````
 from django.db import models
 from datetime import datetime
 from django.utils import timezone
@@ -198,20 +202,118 @@ def criar_mensalidade(sender, instance, created, **kwargs):
         Mensalidade.objects.create(cliente=instance, valor=instance.plano.valor)
 
 
-class PlanoIndicacao(models.Model):
-    nome = models.CharField(max_length=255)
-    TIPOS_PLANO = [
-        ('desconto', 'Desconto na mensalidade'),
-        ('dinheiro', 'Valor em dinheiro'),
-    ]
-    tipo_plano = models.CharField(max_length=10, choices=TIPOS_PLANO)
-    valor = models.DecimalField(max_digits=6, decimal_places=2)
-    ativo = models.BooleanField(default=True)
+class Bonificacao(models.Model):
+    DESCONTO = 'Desconto'
+    CASH = 'Cash'
+
+    CHOICES = (
+        (DESCONTO, 'Desconto'),
+        (CASH, 'Cash'),
+    )
 
     class Meta:
-        verbose_name_plural = "Planos de Indicação"
+        verbose_name = "Bonificação"
+        verbose_name_plural = "Bonificações"
 
-    def __str__(self):
-        return self.nome
+    nome = models.CharField(max_length=255, blank=False, null=False)
+    tipo = models.CharField(max_length=255, blank=False, null=False, choices=CHOICES)
+    cliente_indicador = models.ForeignKey('Cliente', on_delete=models.CASCADE, related_name='bonificacoes')
+    qtde_indicacoes = models.PositiveIntegerField(default=0)
+    valor_desconto = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    valor_dinheiro = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+````
 
+#views.py
+````
+from django.shortcuts import render
+from .models import Cliente, Mensalidade
+from django.db.models import Q
+from django.shortcuts import redirect
+from datetime import datetime
+from django.utils import timezone
+from django.shortcuts import get_object_or_404, redirect
+import pytz
 
+def Index(request):
+    clientes = Cliente.objects.filter(cancelado=False).filter(
+        Q(mensalidade__cancelado=False, 
+          mensalidade__dt_pagamento=None, 
+          mensalidade__pgto=False)).order_by('-mensalidade__dt_vencimento').distinct()
+    return render(request, 'index.html', {'clientes': clientes})
+
+def pagar_mensalidade(request, mensalidade_id):
+    mensalidade = get_object_or_404(Mensalidade, pk=mensalidade_id)
+
+    # realiza as modificações na mensalidade
+    mensalidade.dt_pagamento = datetime.now().date()
+    mensalidade.pgto = True
+    mensalidade.save()
+
+    # redireciona para a página anterior
+    return redirect('index')
+
+def cancelar_cliente(request, cliente_id):
+    cliente = get_object_or_404(Cliente, pk=cliente_id)
+
+    # realiza as modificações no cliente
+    cliente.cancelado = True
+    cliente.save()
+
+    # redireciona para a página anterior
+    return redirect('index')
+````
+
+#urls.py
+````
+from django.urls import path
+from .views import Index, pagar_mensalidade, cancelar_cliente
+
+urlpatterns = [
+    path('', Index, name='index'),
+    path('pagar_mensalidade/<int:mensalidade_id>/', pagar_mensalidade, name='pagar_mensalidade'),
+    path('cancelar_cliente/<int:cliente_id>', cancelar_cliente, name='cancelar_cliente'),
+]
+````
+
+#admin.py
+````
+from django.contrib import admin
+from .models import Servidor, Tipos_pgto, Dispositivo, Sistema, Qtd_tela, Cliente, Plano, Mensalidade
+
+class ClienteAdmin(admin.ModelAdmin):
+    list_display = ('id',
+                    'nome',
+                    'telefone',
+                    'servidor',
+                    'dispositivo',
+                    'sistema',
+                    'data_pagamento',
+                    'forma_pgto',
+                    'plano',
+                    'telas',
+                    'data_adesao',
+                    'data_cancelamento',
+                    'ultimo_pagamento',
+                    'cancelado')
+
+class MensalidadeAdmin(admin.ModelAdmin):
+    list_display = ('id',
+                    'cliente',
+                    'dt_vencimento',
+                    'dt_pagamento',
+                    'valor',
+                    'pgto',
+                    'cancelado')
+    
+class PlanoAdmin(admin.ModelAdmin):
+    list_display = ('nome', 'valor')
+
+admin.site.register(Mensalidade, MensalidadeAdmin)
+admin.site.register(Cliente, ClienteAdmin)
+admin.site.register(Plano, PlanoAdmin)
+admin.site.register(Dispositivo)
+admin.site.register(Tipos_pgto)
+admin.site.register(Qtd_tela)
+admin.site.register(Servidor)
+admin.site.register(Sistema)
+````
